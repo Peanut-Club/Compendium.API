@@ -8,6 +8,7 @@ using helpers.Extensions;
 using helpers.Pooling.Pools;
 using MEC;
 using PluginAPI.Events;
+using static PlayerRoles.Spectating.SpectatableModuleBase;
 
 namespace Compendium;
 
@@ -270,7 +271,7 @@ public static class BanHelper
 			}
 
 			if (banId) {
-                Plugin.Warn("Issuing ID ban ..");
+                Plugin.Info("Issuing ID ban ..");
                 BanHandler.IssueBan(banDetails, BanHandler.BanType.UserId, true);
                 EventManager.ExecuteEvent(new PlayerBannedEvent(foundRecord ? record.UserId : target, foundRecord ? record.NameTracking.LastValue : "Offline Player", foundRecord ? record.Ip : string.Empty, issuer, reason, expiresAt.Ticks));
 				offlineBanResult |= OfflineBanResult.IdBanned;
@@ -400,62 +401,65 @@ public static class BanHelper
 		try
 		{
 			Plugin.Info($"Attempting to unban '{target}' .. (remove IP: {removeIpBans}, remove ID: {removeIdBans})");
-			bool flag = false;
-			bool flag2 = false;
-			bool flag3 = false;
-			PlayerDataRecord targetRecord = null;
-			IPAddress address;
-			if (UserIdValue.TryParse(target, out var value))
+			string targetUserId = null;
+			string targetIp = null;
+
+            if (UserIdValue.TryParse(target, out var userIdValue))
 			{
-				flag = true;
-				if (!PlayerDataRecorder.TryQuery(value.Value, queryNick: false, out targetRecord))
+				if (!PlayerDataRecorder.TryQuery(userIdValue.Value, queryNick: false, out var targetRecord))
 				{
-					flag3 = false;
-					Plugin.Warn("Failed to find target's record by user ID: " + value.Value);
+                    targetUserId = userIdValue.Value;
+					Plugin.Warn("Failed to find target's record by user ID: " + userIdValue.Value);
 				}
 				else
 				{
-					flag3 = true;
-					Plugin.Info("Found target's record by user ID: " + targetRecord.NameTracking.LastValue + " (" + targetRecord.UserId + " - " + targetRecord.Ip + ")");
+                    targetUserId = targetRecord.UserId;
+                    targetIp = targetRecord.Ip;
+                    Plugin.Info("Found target's record by user ID: " + targetRecord.NameTracking.LastValue + " (" + targetRecord.UserId + " - " + targetRecord.Ip + ")");
 				}
 			}
-			else if (IPAddress.TryParse(target, out address))
+			else if (IPAddress.TryParse(target, out var addressValue))
 			{
-				flag2 = true;
-				if (!PlayerDataRecorder.TryQuery(address.ToString(), queryNick: false, out targetRecord))
+				if (!PlayerDataRecorder.TryQuery(addressValue.ToString(), queryNick: false, out var targetRecord))
 				{
-					flag3 = false;
-					Plugin.Warn($"Failed to find target's record by IP: {address}");
+                    targetIp = addressValue.ToString();
+					Plugin.Warn($"Failed to find target's record by IP: {addressValue}");
 				}
-				else
-				{
-					flag3 = true;
-					Plugin.Info("Found target's record by IP: " + targetRecord.NameTracking.LastValue + " (" + targetRecord.UserId + " - " + targetRecord.Ip + ")");
+				else {
+                    targetUserId = targetRecord.UserId;
+                    targetIp = targetRecord.Ip;
+                    Plugin.Info("Found target's record by IP: " + targetRecord.NameTracking.LastValue + " (" + targetRecord.UserId + " - " + targetRecord.Ip + ")");
 				}
 			}
-			else if (PlayerDataRecorder.TryQuery(target, queryNick: true, out targetRecord))
-			{
-				flag3 = true;
-				flag2 = false;
-				flag = false;
+			else if (PlayerDataRecorder.TryQuery(target, queryNick: true, out var targetRecord))
+				{
+                targetUserId = targetRecord.UserId;
+                targetIp = targetRecord.Ip;
+                Plugin.Info("Found target's record by Nickname: " + targetRecord.NameTracking.LastValue + " (" + targetRecord.UserId + " - " + targetRecord.Ip + ")");
             }
 
 
-			UnbanResult unbanResult = 0;
-            if (removeIpBans) {
-                int bans = FileManager.ReadAllLines(BanHandler.GetPath(BanHandler.BanType.UserId)).Length;
-                BanHandler.RemoveBan(targetRecord.UserId, BanHandler.BanType.UserId, true);
-                if (bans < FileManager.ReadAllLines(BanHandler.GetPath(BanHandler.BanType.UserId)).Length)
-                    unbanResult |= UnbanResult.IdRemoved;
-                else unbanResult |= UnbanResult.IdNotBanned;
+            UnbanResult unbanResult = 0;
+            if (removeIdBans) {
+				bool idBanRemoved = false;
+				if (targetUserId != null) {
+					int bans = FileManager.ReadAllLines(BanHandler.GetPath(BanHandler.BanType.UserId)).Length;
+					BanHandler.RemoveBan(targetUserId, BanHandler.BanType.UserId, true);
+					if (bans > FileManager.ReadAllLines(BanHandler.GetPath(BanHandler.BanType.UserId)).Length)
+						idBanRemoved = true;
+				}
+				unbanResult |= idBanRemoved ? UnbanResult.IdRemoved : UnbanResult.IdNotBanned;
             }
 
             if (removeIpBans) {
-				int bans = FileManager.ReadAllLines(BanHandler.GetPath(BanHandler.BanType.IP)).Length;
-                BanHandler.RemoveBan(targetRecord.Ip, BanHandler.BanType.IP, true);
-				if (bans < FileManager.ReadAllLines(BanHandler.GetPath(BanHandler.BanType.IP)).Length)
-					unbanResult |= UnbanResult.IpRemoved;
-                else unbanResult |= UnbanResult.IpNotBanned;
+                bool ipBanRemoved = false;
+				if (targetIp != null) {
+					int bans = FileManager.ReadAllLines(BanHandler.GetPath(BanHandler.BanType.IP)).Length;
+					BanHandler.RemoveBan(targetIp, BanHandler.BanType.IP, true);
+					if (bans > FileManager.ReadAllLines(BanHandler.GetPath(BanHandler.BanType.IP)).Length)
+						ipBanRemoved = true;
+				}
+                unbanResult |= ipBanRemoved ? UnbanResult.IpRemoved : UnbanResult.IpNotBanned;
             }
 
 			return unbanResult;
