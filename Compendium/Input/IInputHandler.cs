@@ -8,7 +8,9 @@ public interface IInputHandler
 
 	bool IsChangeable { get; }
 
-	string Id { get; }
+    string Id { get; }
 
-	void OnPressed(ReferenceHub player);
+    string Label { get; }
+
+    void OnPressed(ReferenceHub player);
 }

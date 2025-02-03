@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using BetterCommands;
+using Compendium.API.Compendium.Settings.SSS;
 using Compendium.Events;
 using Compendium.IO.Saving;
 using GameCore;
@@ -11,6 +12,7 @@ using helpers.Extensions;
 using PluginAPI.Core;
 using PluginAPI.Events;
 using UnityEngine;
+using UserSettings.ServerSpecific;
 
 namespace Compendium.Input;
 
@@ -40,7 +42,12 @@ public static class InputManager
 		}
 		else
 		{
-			_handlers.Add(new THandler());
+			var handler = new THandler();
+			string label = string.IsNullOrWhiteSpace(handler.Label) ? handler.Id : handler.Label;
+			var settings = new SSKeybindSetting(null, label, suggestedKey: handler.Key);
+
+			_handlers.Add(handler);
+			SSSManager.AddNewKeybind(settings, (hub, _) => handler.OnPressed(hub));
 		}
 	}
 
@@ -52,7 +59,7 @@ public static class InputManager
 		}
 	}
 
-	public static bool TryGetHandler(string actionId, out IInputHandler handler)
+    public static bool TryGetHandler(string actionId, out IInputHandler handler)
 	{
 		return _handlers.TryGetFirst((IInputHandler h) => h.Id == actionId, out handler);
 	}
@@ -81,6 +88,7 @@ public static class InputManager
 		return handler.Key;
 	}
 
+	/*
 	[Load]
 	[Reload]
 	private static void Initialize()
@@ -107,6 +115,7 @@ public static class InputManager
 
 	private static void SyncPlayer(ReferenceHub hub)
 	{
+		SSSManager.
 		_handlers.ForEach(delegate(IInputHandler handler)
 		{
 			KeyCode keyCode = KeyFor(hub, handler);
@@ -182,4 +191,5 @@ public static class InputManager
 	{
 		SyncPlayer(ev.Player.ReferenceHub);
 	}
+	*/
 }

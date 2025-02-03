@@ -9,9 +9,10 @@ public class ScpVoiceKeybind : IInputHandler
 
 	public bool IsChangeable => true;
 
-	public string Id => "voice_proximity";
+    public string Id => "voice_proximity";
+    public string Label => "SCP - proximity voice";
 
-	public void OnPressed(ReferenceHub player)
+    public void OnPressed(ReferenceHub player)
 	{
 		IVoiceProfile profile = VoiceChat.GetProfile(player);
 		if (profile != null && profile is ScpVoiceProfile scpVoiceProfile)
