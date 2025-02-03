@@ -10,7 +10,7 @@ public class ScpVoiceKeybind : IInputHandler
 	public bool IsChangeable => true;
 
     public string Id => "voice_proximity";
-    public string Label => "SCP - proximity voice";
+    public string Label => "SCP - Proximity voice";
 
     public void OnPressed(ReferenceHub player)
 	{
