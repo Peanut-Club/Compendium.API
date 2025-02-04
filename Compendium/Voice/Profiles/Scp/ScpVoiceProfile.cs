@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using BetterCommands;
+using Compendium.API.Compendium.Voice.Proximity;
 using Compendium.Constants;
-using Compendium.Extensions;
 using Compendium.Input;
 using Compendium.IO.Saving;
 using Compendium.Voice.Profiles.Pitch;
@@ -18,7 +18,10 @@ public class ScpVoiceProfile : PitchProfile
 {
 	private static SaveFile<CollectionSaveData<string>> _mutes;
 
-	public ScpVoiceFlag Flag { get; set; }
+	private ProximitySpeaker _speaker;
+	public override byte ControllerId { get; internal set; } = 255;
+
+    public ScpVoiceFlag Flag { get; set; }
 
 	public ScpVoiceFlag NextFlag
 	{
@@ -39,9 +42,25 @@ public class ScpVoiceProfile : PitchProfile
 	public ScpVoiceProfile(ReferenceHub owner)
 		: base(owner)
 	{
-	}
+    }
 
-	public void OnSwitchUsed()
+    public override void Enable() {
+        base.Enable();
+        _speaker = ProximityManager.CreateProximitySpeaker(Owner);
+        ControllerId = _speaker.ControllerId;
+        //Plugin.Info("Speaker created with id: " + ControllerId);
+    }
+
+    public override void Disable() {
+        base.Disable();
+        var id = ControllerId;
+        ProximityManager.DeleteSpeaker(_speaker);
+        _speaker = null;
+        ControllerId = 255;
+        //Plugin.Info("Speaker deleted with id: " + id);
+    }
+
+    public void OnSwitchUsed()
 	{
 		Flag = NextFlag;
 		base.Owner.Broadcast(Colors.LightGreen("<b>Voice přepnut na " + TypeAndColor() + " chat</b>"), 3);
@@ -96,6 +115,7 @@ public class ScpVoiceProfile : PitchProfile
 						}
 						if (Plugin.Config.VoiceSettings.AllowedScpChat.Contains(base.Owner.RoleId()))
 						{
+							/*
 							if (destination.Key.Position().IsWithinDistance(base.Owner.Position(), 25f))
 							{
 								dictionary[destination.Key] = VoiceChatChannel.RoundSummary;
@@ -103,8 +123,9 @@ public class ScpVoiceProfile : PitchProfile
 							else
 							{
 								dictionary[destination.Key] = VoiceChatChannel.None;
-							}
-						}
+                            }*/
+                            dictionary[destination.Key] = VoiceChatChannel.Proximity;
+                        }
 						else
 						{
 							dictionary[destination.Key] = VoiceChatChannel.None;
@@ -119,6 +140,7 @@ public class ScpVoiceProfile : PitchProfile
 					}
 					if (Plugin.Config.VoiceSettings.AllowedScpChat.Contains(base.Owner.RoleId()))
 					{
+                        /*
 						if (destination.Key.Position().IsWithinDistance(base.Owner.Position(), 25f))
 						{
 							dictionary[destination.Key] = VoiceChatChannel.RoundSummary;
@@ -126,8 +148,9 @@ public class ScpVoiceProfile : PitchProfile
 						else
 						{
 							dictionary[destination.Key] = VoiceChatChannel.None;
-						}
-					}
+						}*/
+                        dictionary[destination.Key] = VoiceChatChannel.Proximity;
+                    }
 					else
 					{
 						dictionary[destination.Key] = VoiceChatChannel.None;

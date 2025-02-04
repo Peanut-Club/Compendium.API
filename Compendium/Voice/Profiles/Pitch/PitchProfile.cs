@@ -22,8 +22,9 @@ public class PitchProfile : IVoiceProfile
 	public PitchHelper PitchHelper = new PitchHelper();
 
 	public ReferenceHub Owner => owner;
+	public virtual byte ControllerId { get; internal set; } = 255;
 
-	public IVoiceRole Role => owner.Role() as IVoiceRole;
+    public IVoiceRole Role => owner.Role() as IVoiceRole;
 
 	public VoiceChatChannel Channel
 	{
@@ -73,14 +74,14 @@ public class PitchProfile : IVoiceProfile
 		this.owner = owner;
 	}
 
-	public void Disable()
+	public virtual void Disable()
 	{
 		isEnabled = false;
 		pitchFactor = 1f;
 		owner = null;
 	}
 
-	public void Enable()
+	public virtual void Enable()
 	{
 		isEnabled = true;
 		pitchFactor = 1f;

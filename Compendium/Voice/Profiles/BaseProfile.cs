@@ -11,7 +11,9 @@ public class BaseProfile : IVoiceProfile
 
 	public ReferenceHub Owner => _owner;
 
-	public bool IsEnabled => _isEnabled;
+	public virtual byte ControllerId => 255;
+
+    public bool IsEnabled => _isEnabled;
 
 	public bool IsPersistent { get; }
 
@@ -31,7 +33,7 @@ public class BaseProfile : IVoiceProfile
 
 	public VoiceModuleBase Module => Role?.VoiceModule ?? null;
 
-	public BaseProfile(ReferenceHub owner)
+    public BaseProfile(ReferenceHub owner)
 	{
 		_owner = owner;
 	}

@@ -3,6 +3,7 @@ namespace Compendium.Voice;
 public interface IVoiceProfile
 {
 	ReferenceHub Owner { get; }
+	byte ControllerId { get; }
 
 	bool IsEnabled { get; }
 

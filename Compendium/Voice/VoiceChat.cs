@@ -1,12 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Text;
 using BetterCommands;
 using Compendium.Attributes;
 using Compendium.Enums;
 using Compendium.Events;
+using Compendium.Features;
 using Compendium.Updating;
 using Compendium.Voice.Pools;
 using Compendium.Voice.Prefabs.Scp;
+using Compendium.Voice.Profiles.Pitch;
 using helpers.Attributes;
 using helpers.Patching;
 using Mirror;
@@ -15,6 +19,8 @@ using PlayerRoles.Voice;
 using PluginAPI.Events;
 using Utils.NonAllocLINQ;
 using VoiceChat;
+using VoiceChat.Codec.Enums;
+using VoiceChat.Codec;
 using VoiceChat.Networking;
 
 namespace Compendium.Voice;
@@ -29,7 +35,14 @@ public static class VoiceChat
 
 	private static readonly HashSet<IVoicePrefab> _activePrefabs = new HashSet<IVoicePrefab>();
 
-	public static IReadOnlyCollection<IVoicePrefab> Prefabs => _activePrefabs;
+
+    private static OpusEncoder Encoder = new OpusEncoder(OpusApplicationType.Voip);
+
+    private static OpusDecoder Decoder = new OpusDecoder();
+
+    private static float[] ampArray = new float[48000];
+
+    public static IReadOnlyCollection<IVoicePrefab> Prefabs => _activePrefabs;
 
 	public static IReadOnlyCollection<IVoiceProfile> Profiles => _activeProfiles.Values;
 
@@ -260,20 +273,41 @@ public static class VoiceChat
 			if (VoiceChatMutes.IsMuted(msg.Speaker))
 			{
 				return false;
-			}
-			VoiceChatChannel origChannel = voiceRole.VoiceModule.ValidateSend(msg.Channel);
+            }
+            VoiceChatChannel origChannel = voiceRole.VoiceModule.ValidateSend(msg.Channel);
 			IVoiceProfile profile = GetProfile(msg.Speaker);
 			VoicePacket packet = VoiceChatUtils.GeneratePacket(msg, voiceRole, origChannel);
-			if (State == null || !State.Process(packet))
-			{
-				profile?.Process(packet);
+			if (State == null || !State.Process(packet)) {
+                profile?.Process(packet);
 			}
 			msg = packet.Message;
-			if (packet.SenderChannel != 0)
+
+            bool speakerIsScp = msg.Speaker.IsSCP() && msg.Speaker.roleManager.CurrentRole.RoleTypeId != RoleTypeId.Scp079;
+            AudioMessage? audioMsg = null;
+            if (speakerIsScp && profile != null) {
+                var newMsg = new AudioMessage {
+                    ControllerId = profile.ControllerId,
+                    Data = (byte[])msg.Data.Clone(),
+                    DataLength = msg.DataLength
+                };
+
+                Decoder.Decode(newMsg.Data, newMsg.DataLength, ampArray);
+                for (int i = 0; i < ampArray.Length; i++) ampArray[i] = ampArray[i] * 20f;
+                newMsg.DataLength = Encoder.Encode(ampArray, newMsg.Data);
+
+                audioMsg = newMsg;
+            }
+
+            if (packet.SenderChannel != 0)
 			{
 				voiceRole.VoiceModule.CurrentChannel = packet.SenderChannel;
 				packet.Destinations.ForEach(delegate(KeyValuePair<ReferenceHub, VoiceChatChannel> p)
 				{
+					if (speakerIsScp && p.Value == VoiceChatChannel.Proximity && audioMsg.HasValue && audioMsg.Value.ControllerId != 255) {
+						p.Key.connectionToClient.Send(audioMsg.Value);
+						return;
+					}
+
 					if (packet.AlternativeSenders.TryGetValue(p.Key, out var value))
 					{
 						msg.Speaker = value;
